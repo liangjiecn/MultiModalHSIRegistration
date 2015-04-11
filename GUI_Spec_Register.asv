@@ -1423,14 +1423,12 @@ function ButtonManual_Callback(hObject, eventdata, handles)
 if isempty(handles.datacube)
     anchor = handles.anchor;
     target = handles.target;
-    if ~exist('controlpoints.mat', 'file') % need fix
+    if ~exist('controlpoints', 'var') % need fix
         [input_points, base_points] = cpselect(target, anchor,'Wait', true); %manually select corresponding points
-        save('controlpoints.mat', 'input_points', 'base_points');
-    else
-        load('controlpoints');
-    end
-%     assignin('base', 'input_points',input_points);
-%     assignin('base', 'base_points',base_points);
+%     end
+%     load('controlpoints');
+    assignin('base', 'input_points',input_points);
+    assignin('base', 'base_points',base_points);
     %in terms of affine transform, Minimum Number of Control Point Pairs is 3
     
 %     input_points = input_points';
@@ -1453,15 +1451,15 @@ if isempty(handles.datacube)
     axes(handles.axes1);cla;
     showMatchedFeatures(anchor, handles.target, base_points, input_points);
     
-    tform = fitgeotrans(input_points, base_points, 'Affine'); 
-    H = tform.T;
-    register= imwarp(target, tform, 'OutputView', imref2d(size(anchor)));
+    tform_manual = fitgeotrans(input_points, base_points, 'Affine'); 
+    tform_manual = affine2d(tform_manual.tdata.T); 
+    register_manual = imwarp(target, tform_manual, 'OutputView', imref2d(size(anchor)));
     axes(handles.axes2);cla;
     imshowpair(handles.anchor, register,'ColorChannels','red-cyan','Scaling','independent');
     set(handles.UitableT, 'Data', H);
     
-    handles.transform = tform;
-    handles.register = register;
+    handles.transform = tform_manual;
+    handles.register = register_manual;
 
 
 %     updateRegistration(handles);
@@ -1505,10 +1503,10 @@ else
         assignin('base', 'input_points',input_points);
         assignin('base', 'base_points',base_points);
         %in terms of affine transform, Minimum Number of Control Point Pairs is 3
-        tform = cp2tform(input_points, base_points, 'similarity'); 
-        tform = affine2d(tform.tdata.T); 
-        register_manual = imwarp(target, tform, 'OutputView', imref2d(size(target)));
-        handles.transform = tform;
+        tform_manual = cp2tform(input_points, base_points, 'similarity'); 
+        tform_manual = affine2d(tform_manual.tdata.T); 
+        register_manual = imwarp(target, tform_manual, 'OutputView', imref2d(size(target)));
+        handles.transform = tform_manual;
         handles.register = register_manual;
         updateRegistration(handles);
         axes(handles.axes1);cla;
@@ -1523,7 +1521,7 @@ else
         set(handles.editError, 'String',sprintf('%4s %.0f %2s %.0f %4s %.4f %2s %.4f',...
         'SID:', similarityold(i,2),'to',similarity(i,2), 'SMI:', similarityold(i,4),'to',similarity(i,4)));
         
-        T = tform.T;
+        T = tform_manual.T;
         ss = T(2,1);
         sc = T(1,1);
         scale(i) = sqrt(ss*ss + sc*sc);
