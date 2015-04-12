@@ -1189,25 +1189,38 @@ if ~isempty(varargin)
     dispOptim = false;
 end
 anchor = handles.anchor;
-target = handles.target;
+% target = handles.target;
+target = handles.register; % optimize the manual result
 
-optimizer = registration.optimizer.OnePlusOneEvolutionary;
-optimizer.GrowthFactor = 1.05;
-optimizer.Epsilon = 1.5e-6;
-optimizer.InitialRadius = 6.25e-3;
-optimizer.MaximumIterations = 300;
-metric = registration.metric.MattesMutualInformation;
-%metric = registration.metric.MeanSquares;
+% optimizer = registration.optimizer.OnePlusOneEvolutionary;
+% optimizer.GrowthFactor = 1.05;
+% optimizer.Epsilon = 1.5e-6;
+% optimizer.InitialRadius = 6.25e-3;
+% optimizer.MaximumIterations = 300;
+% metric = registration.metric.MattesMutualInformation;
+% metric = registration.metric.MeanSquares;
 
-tic
-tform = imregtform(target, anchor, 'affine', optimizer, metric, ...
-        'DisplayOptimization', true, 'PyramidLevels', 2 );
+% tic
+% tform = imregtform(target, anchor, 'affine', optimizer, metric, ...
+%         'DisplayOptimization', true, 'PyramidLevels', 2 );
+% [optimizer, metric] = imregconfig('monomodal');
+[optimizer, metric] = imregconfig('multimodal');
+%  
+optimizer.GrowthFactor = 1.01; % If you set GrowthFactor to a small value, the optimization is slower, but it is likely to convergeon a better solution. The default value of GrowthFactor is 1.05.
+optimizer.InitialRadius = 6.25e-4; %   If you set InitialRadius toa large value, the computation time decreases. ...
+%However, overly largevalues of InitialRadius might result in an optimizationthat fails to converge. The default value of InitialRadius is 6.25e-3.
+optimizer.Epsilon = 1.5e-6; % If you set Epsilon to a small value, the optimization of the metric is more accurate, but the computation takeslonger. The defaultvalue of Epsilon is 1.5e-6.
+optimizer.MaximumIterations = 1000;
+
+% tform = imregtform(target, anchor, 'affine', optimizer, metric,  'DisplayOptimization', true, 'InitialTransformation',handles.transform);
+
+ tform = imregtform(target, anchor, 'affine', optimizer, metric,  'DisplayOptimization', true);
 %tform = imregtform2(target, anchor);
-register = imwarp(target, tform, 'OutputView', imref2d(size(target)));
+register = imwarp(target, tform, 'OutputView', imref2d(size(anchor)));
 timeDefault = toc;
 handles.transform = tform;
 handles.register = register;
-
+assignin('base', 'register',register);
 % similarityold = updateSimilarity(handles.anchor,handles.target);
 % handles.similarity = updateSimilarity(handles.anchor,handles.register);
 if dispOptim
@@ -1453,7 +1466,7 @@ if isempty(handles.datacube)
     axes(handles.axes1);cla;
     showMatchedFeatures(anchor, handles.target, base_points, input_points);
     
-    tform = fitgeotrans(input_points, base_points, 'Affine'); 
+    tform = fitgeotrans(input_points, base_points, 'affine'); 
     H = tform.T;
     register= imwarp(target, tform, 'OutputView', imref2d(size(anchor)));
     axes(handles.axes2);cla;
@@ -1462,7 +1475,7 @@ if isempty(handles.datacube)
     
     handles.transform = tform;
     handles.register = register;
-
+    assignin('base', 'register',register);
 
 %     updateRegistration(handles);
 %     axes(handles.axes1);cla;

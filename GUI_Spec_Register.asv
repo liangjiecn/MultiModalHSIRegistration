@@ -1191,23 +1191,33 @@ end
 anchor = handles.anchor;
 target = handles.target;
 
-optimizer = registration.optimizer.OnePlusOneEvolutionary;
-optimizer.GrowthFactor = 1.05;
-optimizer.Epsilon = 1.5e-6;
-optimizer.InitialRadius = 6.25e-3;
-optimizer.MaximumIterations = 300;
-metric = registration.metric.MattesMutualInformation;
-%metric = registration.metric.MeanSquares;
+% optimizer = registration.optimizer.OnePlusOneEvolutionary;
+% optimizer.GrowthFactor = 1.05;
+% optimizer.Epsilon = 1.5e-6;
+% optimizer.InitialRadius = 6.25e-3;
+% optimizer.MaximumIterations = 300;
+% metric = registration.metric.MattesMutualInformation;
+% metric = registration.metric.MeanSquares;
 
-tic
-tform = imregtform(target, anchor, 'affine', optimizer, metric, ...
-        'DisplayOptimization', true, 'PyramidLevels', 2 );
+% tic
+% tform = imregtform(target, anchor, 'affine', optimizer, metric, ...
+%         'DisplayOptimization', true, 'PyramidLevels', 2 );
+% [optimizer, metric] = imregconfig('monomodal');
+[optimizer, metric] = imregconfig('multimodal');
+%  
+optimizer.GrowthFactor = 1.01; % If you set GrowthFactor to a small value, the optimization is slower, but it is likely to convergeon a better solution. The default value of GrowthFactor is 1.05.
+optimizer.InitialRadius = 6.25e-4; %   If you set InitialRadius toa large value, the computation time decreases. ...
+%However, overly largevalues of InitialRadius might result in an optimizationthat fails to converge. The default value of InitialRadius is 6.25e-3.
+optimizer.Epsilon = 1.5e-6; % If you set Epsilon to a small value, the optimization of the metric is more accurate, but the computation takeslonger. The defaultvalue of Epsilon is 1.5e-6.
+optimizer.MaximumIterations = 1000;
+
+tform = imregtform(target, anchor, 'affine', optimizer, metric,  'DisplayOptimization', true, 'InitialTransformation',handles.transform);
 %tform = imregtform2(target, anchor);
-register = imwarp(target, tform, 'OutputView', imref2d(size(target)));
+register = imwarp(target, tform, 'OutputView', imref2d(size(anchor)));
 timeDefault = toc;
 handles.transform = tform;
 handles.register = register;
-
+assignin('base', 'register',register);
 % similarityold = updateSimilarity(handles.anchor,handles.target);
 % handles.similarity = updateSimilarity(handles.anchor,handles.register);
 if dispOptim
@@ -1423,12 +1433,14 @@ function ButtonManual_Callback(hObject, eventdata, handles)
 if isempty(handles.datacube)
     anchor = handles.anchor;
     target = handles.target;
-    if ~exist('controlpoints', 'var') % need fix
+    if ~exist('controlpoints.mat', 'file') % need fix
         [input_points, base_points] = cpselect(target, anchor,'Wait', true); %manually select corresponding points
-%     end
-%     load('controlpoints');
-    assignin('base', 'input_points',input_points);
-    assignin('base', 'base_points',base_points);
+        save('controlpoints.mat', 'input_points', 'base_points');
+    else
+        load('controlpoints');
+    end
+%     assignin('base', 'input_points',input_points);
+%     assignin('base', 'base_points',base_points);
     %in terms of affine transform, Minimum Number of Control Point Pairs is 3
     
 %     input_points = input_points';
@@ -1451,16 +1463,16 @@ if isempty(handles.datacube)
     axes(handles.axes1);cla;
     showMatchedFeatures(anchor, handles.target, base_points, input_points);
     
-    tform_manual = fitgeotrans(input_points, base_points, 'Affine'); 
-    tform_manual = affine2d(tform_manual.tdata.T); 
-    register_manual = imwarp(target, tform_manual, 'OutputView', imref2d(size(anchor)));
+    tform = fitgeotrans(input_points, base_points, 'affine'); 
+    H = tform.T;
+    register= imwarp(target, tform, 'OutputView', imref2d(size(anchor)));
     axes(handles.axes2);cla;
     imshowpair(handles.anchor, register,'ColorChannels','red-cyan','Scaling','independent');
     set(handles.UitableT, 'Data', H);
     
-    handles.transform = tform_manual;
-    handles.register = register_manual;
-
+    handles.transform = tform;
+    handles.register = register;
+    assignin('base', 'register',register);
 
 %     updateRegistration(handles);
 %     axes(handles.axes1);cla;
@@ -1503,10 +1515,10 @@ else
         assignin('base', 'input_points',input_points);
         assignin('base', 'base_points',base_points);
         %in terms of affine transform, Minimum Number of Control Point Pairs is 3
-        tform_manual = cp2tform(input_points, base_points, 'similarity'); 
-        tform_manual = affine2d(tform_manual.tdata.T); 
-        register_manual = imwarp(target, tform_manual, 'OutputView', imref2d(size(target)));
-        handles.transform = tform_manual;
+        tform = cp2tform(input_points, base_points, 'similarity'); 
+        tform = affine2d(tform.tdata.T); 
+        register_manual = imwarp(target, tform, 'OutputView', imref2d(size(target)));
+        handles.transform = tform;
         handles.register = register_manual;
         updateRegistration(handles);
         axes(handles.axes1);cla;
@@ -1521,7 +1533,7 @@ else
         set(handles.editError, 'String',sprintf('%4s %.0f %2s %.0f %4s %.4f %2s %.4f',...
         'SID:', similarityold(i,2),'to',similarity(i,2), 'SMI:', similarityold(i,4),'to',similarity(i,4)));
         
-        T = tform_manual.T;
+        T = tform.T;
         ss = T(2,1);
         sc = T(1,1);
         scale(i) = sqrt(ss*ss + sc*sc);
