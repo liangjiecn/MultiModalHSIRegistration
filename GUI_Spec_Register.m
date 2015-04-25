@@ -25,7 +25,7 @@ function varargout = GUI_Spec_Register(varargin)
 
 % Edit the above text to modify the response to help GUI_Spec_Register
 
-% Last Modified by GUIDE v2.5 05-Oct-2013 22:20:43
+% Last Modified by GUIDE v2.5 17-Apr-2015 14:40:28
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -110,11 +110,7 @@ handles.f = 0;
 handles.x1 = [];
 handles.x2 = [];
 
-
-
 set(handles.editError, 'Visible', 'on');
-
-
 set(handles.sliderBright, 'Enable', 'on');
 set(handles.sliderContrast, 'Enable', 'on');
 set(handles.sliderRotate, 'Enable', 'off');
@@ -169,10 +165,10 @@ end
 if handles.fileLoaded2 == 1 %check the image is loaded
     %targetC = RMScontrast(handles.target); %this one is interesting
     %harrisThreshhold = 0.0005*(targetC/anchorC); 
-    %handles.target = imadjust(handles.target); % instead of adjust thereshold, 
-    handles.target = imadjust(handles.target); % this makes the features robust to different frames 
+%     handles.target = imadjust(handles.target); % this makes the features robust to different frames 
     harrisThreshhold = 0.001;
     handles.targetCORNERS = DetectHarris(handles.target, harrisThreshhold);    
+%     handles.targetCORNERS = DetectHarris(handles.target); 
     axes(handles.axes2); cla; imshow(handles.target);
     hold on;
     plot(handles.targetCORNERS(:,1), floor(handles.targetCORNERS(:,2)),'g+');
@@ -334,25 +330,22 @@ function ButtonMatch_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-
 if (handles.fileLoaded1==1)
-    
    anchor = handles.anchor;
    target = handles.target;
-   
    maxerror = 8; %the square of the maxinum of the displacement
    switch handles.featuremode
        case 'Harris'
            indexPairs = matchFeatures(handles.anchorCORNERS, handles.targetCORNERS,'Method','NearestNeighborSymmetric') ;
            allmatched_pts1 = handles.anchorCORNERS(indexPairs(:, 1),:);
            allmatched_pts2 = handles.targetCORNERS(indexPairs(:, 2),:);
-           n2 = dist2(allmatched_pts1, allmatched_pts2);
-           index = find(n2 < maxerror);
-           matched_pts1 = allmatched_pts1(index,:);
-           matched_pts2 = allmatched_pts2(index,:);
-           
-           %figure; showMatchedFeatures(anchor,target, matched_pts1,matched_pts2, 'montage'); 
-             
+%            n2 = dist2(allmatched_pts1, allmatched_pts2);
+%            index = find(n2 < maxerror);
+%            matched_pts1 = allmatched_pts1(index,:);
+%            matched_pts2 = allmatched_pts2(index,:); 
+             matched_pts1 = allmatched_pts1;
+             matched_pts2 = allmatched_pts2; 
+           %figure; showMatchedFeatures(anchor,target, matched_pts1,matched_pts2, 'montage');        
        case 'SURF'
            [f1, vpts1] = extractFeatures(handles.anchor, handles.anchorPOINTS);
            [f2, vpts2] = extractFeatures(handles.target, handles.targetPOINTS);
@@ -360,7 +353,6 @@ if (handles.fileLoaded1==1)
            matched_pts1 = vpts1(indexPairs(:, 1)).Location;
            matched_pts2 = vpts2(indexPairs(:, 2)).Location;
            %figure; showMatchedFeatures(anchor,target, matched_pts1,matched_pts2, 'montage'); 
-           
        case 'SIFT'
            f1 = handles.anchorDESCRIPS;
            f2 = handles.targetDESCRIPS;
@@ -1096,32 +1088,34 @@ target = handles.oldtarget;
 tform = handles.transform;
 register = imwarp(target, tform, 'OutputView', imref2d(size(target)));
 handles.register = register;
-similarityold = updateSimilarity(handles.anchor,handles.target);
-handles.similarity = updateSimilarity(handles.anchor,handles.register);
-if isempty(handles.x1)
-    % to speed up the procedure
-    if dispOptim
-        axes(handles.axes2);cla;
-        imshowpair(handles.anchor, imadjust(register),'ColorChannels','red-cyan','Scaling','independent');
-        set(handles.editError, 'String',sprintf('%4s %.0f %2s %.0f %4s %.4f %2s %.4f',...
-            'SID:', similarityold(2),'to',handles.similarity(2), 'SMI:', similarityold(4),'to',handles.similarity(4)));
-    end
-else    
-    x2p = transformPointsForward(tform, handles.x2);
-    axes(handles.axes2);cla;
-    showMatchedFeatures(handles.anchor, imadjust(register), handles.x1, x2p); 
-    legend('anchor', 'register');
-    title('Matched Features after registration');
-    %axes(handles.axes2); cla; imshow(register);
-    diff = (handles.x1-x2p).^2;
-    sumerr = sum(diff(:,1) + diff(:,2));    
-    err = sqrt(sumerr/size(x2p,1));
-    olderr = sscanf(get(handles.TextError, 'String'),'%*s %f %*s %f');
-    set(handles.editError, 'String',sprintf('%8s %2.3f %2s %2.3f %4s %.0f %2s %.0f %4s %.4f %2s %.4f',...
-    'F_error:', olderr(1),'to',err,...
-    'SID:', similarityold(2),'to',handles.similarity(2),...
-    'SMI:', similarityold(4),'to',handles.similarity(4)));
-end
+axes(handles.axes2);cla;
+imshowpair(handles.anchor, register, 'diff');
+% similarityold = updateSimilarity(handles.anchor,handles.target);
+% handles.similarity = updateSimilarity(handles.anchor,handles.register);
+% if isempty(handles.x1)
+%     % to speed up the procedure
+%     if dispOptim
+%         axes(handles.axes2);cla;
+%         imshowpair(handles.anchor, imadjust(register),'ColorChannels','red-cyan','Scaling','independent');
+%         set(handles.editError, 'String',sprintf('%4s %.0f %2s %.0f %4s %.4f %2s %.4f',...
+%             'SID:', similarityold(2),'to',handles.similarity(2), 'SMI:', similarityold(4),'to',handles.similarity(4)));
+%     end
+% else    
+%     x2p = transformPointsForward(tform, handles.x2);
+%     axes(handles.axes2);cla;
+%     showMatchedFeatures(handles.anchor, imadjust(register), handles.x1, x2p); 
+%     legend('anchor', 'register');
+%     title('Matched Features after registration');
+%     %axes(handles.axes2); cla; imshow(register);
+%     diff = (handles.x1-x2p).^2;
+%     sumerr = sum(diff(:,1) + diff(:,2));    
+%     err = sqrt(sumerr/size(x2p,1));
+%     olderr = sscanf(get(handles.TextError, 'String'),'%*s %f %*s %f');
+%     set(handles.editError, 'String',sprintf('%8s %2.3f %2s %2.3f %4s %.0f %2s %.0f %4s %.4f %2s %.4f',...
+%     'F_error:', olderr(1),'to',err,...
+%     'SID:', similarityold(2),'to',handles.similarity(2),...
+%     'SMI:', similarityold(4),'to',handles.similarity(4)));
+% end
 
 %handles = guidata(gcf);
 guidata(hObject, handles);    
@@ -1181,7 +1175,6 @@ function ButtonMI_Callback(hObject, eventdata, handles, varargin)
 % hObject    handle to ButtonMI (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
 %band = get(handles.SliderWavelength, 'Value');
 %target = squeeze(handles.datacube(:,:,floor((band-handles.bandname(1))/10+1)));
 dispOptim = true;
@@ -1210,14 +1203,13 @@ optimizer.GrowthFactor = 1.01; % If you set GrowthFactor to a small value, the o
 optimizer.InitialRadius = 6.25e-4; %   If you set InitialRadius toa large value, the computation time decreases. ...
 %However, overly largevalues of InitialRadius might result in an optimizationthat fails to converge. The default value of InitialRadius is 6.25e-3.
 optimizer.Epsilon = 1.5e-6; % If you set Epsilon to a small value, the optimization of the metric is more accurate, but the computation takeslonger. The defaultvalue of Epsilon is 1.5e-6.
-optimizer.MaximumIterations = 1000;
+optimizer.MaximumIterations = 300;
 
 % tform = imregtform(target, anchor, 'affine', optimizer, metric,  'DisplayOptimization', true, 'InitialTransformation',handles.transform);
 
  tform = imregtform(target, anchor, 'affine', optimizer, metric,  'DisplayOptimization', true);
 %tform = imregtform2(target, anchor);
 register = imwarp(target, tform, 'OutputView', imref2d(size(anchor)));
-timeDefault = toc;
 handles.transform = tform;
 handles.register = register;
 assignin('base', 'register',register);
@@ -1323,18 +1315,32 @@ function ButtonLoadR_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 currentpath = cd();
-[filename, pathname]= uigetfile({'*.tiff;*.tif;*.jpg;*.png;*.gif','All Image Files';...
-          '*.*','All Files' },'Load Reference Image');
+[filename, pathname]= uigetfile({'*.tiff;*.tif;*.jpg;*.png;*.gif;*.mat;','All Image Files';...
+          '*.*','All Files' },'Load Reference Image or Hyperspectral image');
 if (filename==0) % cancel pressed
     return;
 end
-cd (pathname);     
-img = imread(filename);
-if ndims(img) == 3 
-   img = rgb2gray(img);
+cd (pathname);   
+if strcmp(filename(end-3:end), '.mat')
+    dataCube = importdata(filename);
+    [~, ~, b] = size(dataCube);
+    focus = zeros(b,1);
+    for i=1:b
+        slice = squeeze(dataCube(:,:,i));
+        focus(i) = fmeasure(slice, 'GDER',[]);   
+    end
+    [~,index] = max(focus);
+    anchor = squeeze(dataCube(:,:,index));
+    anchor = imadjust(anchor);
+    anchor = imresize(anchor, 4);
+    
+else
+    img = imread(filename);
+    if ndims(img) == 3 
+       img = rgb2gray(img);
+    end
+    anchor = img;
 end
-%anchor = im2single(img);
-anchor = img;
 handles.fileLoaded1 = 1;
 handles.anchor = anchor;
 handles.oldanchor = anchor;
@@ -1362,18 +1368,32 @@ function ButtonLoadT_Callback(hObject, eventdata, handles)
 uiresume(handles.figure1); 
 handles.anchorDESCRIPS = 0;
 currentpath = cd();
-[filename, pathname] = uigetfile({'*.tiff;*.tif;*.jpg;*.png;*.gif','All Image Files';...
+[filename, pathname] = uigetfile({'*.tiff;*.tif;*.jpg;*.png;*.gif;*.mat','All Image Files';...
           '*.*','All Files' },'Load Target Image');
 if (filename==0) % cancel pressed
     return;
 end
 cd (pathname);  
-img = imread(filename);
-if ndims(img) == 3 
-   img = rgb2gray(img);
+if strcmp(filename(end-3:end), '.mat')
+    dataCube = importdata(filename);
+    [~, ~, b] = size(dataCube);
+    focus = zeros(b,1);
+    for i=1:b
+        slice = squeeze(dataCube(:,:,i));
+        focus(i) = fmeasure(slice, 'GDER',[]);   
+    end
+    [~,index] = max(focus);
+    target = squeeze(dataCube(:,:,index));
+    target = imadjust(target);
+    handles.fileLoaded2 = 1;
+else
+    img = imread(filename);
+    if ndims(img) == 3 
+       img = rgb2gray(img);
+    end
+    handles.fileLoaded2 = 1;
+    target = img;
 end
-handles.fileLoaded2 = 1;
-target = img;
 handles.target = target;
 handles.oldtarget = target;
 axes(handles.axes2); cla;  imshow(target);
@@ -1433,22 +1453,21 @@ function ButtonManual_Callback(hObject, eventdata, handles)
 % hObject    handle to ButtonManual (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-if isempty(handles.datacube)
+% if isempty(handles.datacube)
     anchor = handles.anchor;
     target = handles.target;
-    if ~exist('controlpoints.mat', 'file') % need fix
-        [input_points, base_points] = cpselect(target, anchor,'Wait', true); %manually select corresponding points
-        save('controlpoints.mat', 'input_points', 'base_points');
-    else
-        load('controlpoints');
-    end
+%     if ~exist('Testcontrolpoints.mat', 'file') % need fix
+    [input_points, base_points] = cpselect(target, anchor,'Wait', true); %manually select corresponding points
+%         save('Testcontrolpoints.mat', 'input_points', 'base_points');
+%     else
+%         load('Testcontrolpoints');
+%     end
 %     assignin('base', 'input_points',input_points);
 %     assignin('base', 'base_points',base_points);
     %in terms of affine transform, Minimum Number of Control Point Pairs is 3
     
 %     input_points = input_points';
 %     base_points = base_points';
-    
     
 % these codes failed    
 %      t = 0.05;
@@ -1487,69 +1506,69 @@ if isempty(handles.datacube)
 %     title('falsecolor overlaid registered images');
 %     set(handles.imageright,'ButtonDownFcn', @(s,e) imsave(handles.imageright));
 %     handles.similarity = updateSimilarity(handles.anchor, handles.register);
-else
-    scale = zeros(4,1);
-    theta = zeros(4,1);
-    tx = zeros(4,1);
-    ty = zeros(4,1);
-    similarity = zeros(4,5);
-    similarityold = zeros(4,5);
-    scale(2) = 1;
-    theta(2) = 0;
-    tx(2) = 0;
-    ty(2) = 0;
-    bandname = [600; handles.bandname(handles.reference); 800; 1000];
-    if exist('tempT.mat','file') == 2 
-        load('tempT.mat')
-    end
-    s = find(scale == 0,1);
-    anchor = handles.anchor;
-    
-    for i = s:4
-        if bandname(i) == handles.bandname(handles.reference);
-            scale(2) = 1;
-            theta(2) = 0;
-            tx(2) = 0;
-            ty(2) = 0;   
-        else    
-        target = squeeze(handles.datacube(:,:, find(handles.bandname == bandname(i),1)));
-        
-        [input_points, base_points] = cpselect(target, anchor,'Wait', true);
-        assignin('base', 'input_points',input_points);
-        assignin('base', 'base_points',base_points);
-        %in terms of affine transform, Minimum Number of Control Point Pairs is 3
-        tform = cp2tform(input_points, base_points, 'similarity'); 
-        tform = affine2d(tform.tdata.T); 
-        register_manual = imwarp(target, tform, 'OutputView', imref2d(size(target)));
-        handles.transform = tform;
-        handles.register = register_manual;
-        updateRegistration(handles);
-        axes(handles.axes1);cla;
-        handles.imageleft = imshowpair(anchor, target, 'ColorChannels','red-cyan','Scaling','independent');
-        title('falsecolor overlaid unregistered images');
-        axes(handles.axes2);cla;
-        imshowpair(anchor, register_manual, 'ColorChannels','red-cyan','Scaling','independent');
-        title('falsecolor overlaid registered images');
-        similarityold(i,:) = updateSimilarity(handles.anchor, target);
-        similarity(i,:) = updateSimilarity(handles.anchor, handles.register);
-        handles.similarity = similarity(i,:);
-        set(handles.editError, 'String',sprintf('%4s %.0f %2s %.0f %4s %.4f %2s %.4f',...
-        'SID:', similarityold(i,2),'to',similarity(i,2), 'SMI:', similarityold(i,4),'to',similarity(i,4)));
-        
-        T = tform.T;
-        ss = T(2,1);
-        sc = T(1,1);
-        scale(i) = sqrt(ss*ss + sc*sc);
-        theta(i) = atan2(ss,sc)*180/pi;
-        tx(i) = T(3,1);
-        ty(i) = T(3,2);
-        
-        end
-        save('tempT.mat', 'bandname','scale','theta','tx','ty','similarityold','similarity');
-    end
-    Tr = makeTransform(bandname,scale,theta,tx,ty);
-    handles.Transform_data = Tr;
-end
+% else
+%     scale = zeros(4,1);
+%     theta = zeros(4,1);
+%     tx = zeros(4,1);
+%     ty = zeros(4,1);
+%     similarity = zeros(4,5);
+%     similarityold = zeros(4,5);
+%     scale(2) = 1;
+%     theta(2) = 0;
+%     tx(2) = 0;
+%     ty(2) = 0;
+%     bandname = [600; handles.bandname(handles.reference); 800; 1000];
+%     if exist('tempT.mat','file') == 2 
+%         load('tempT.mat')
+%     end
+%     s = find(scale == 0,1);
+%     anchor = handles.anchor;
+%     
+%     for i = s:4
+%         if bandname(i) == handles.bandname(handles.reference);
+%             scale(2) = 1;
+%             theta(2) = 0;
+%             tx(2) = 0;
+%             ty(2) = 0;   
+%         else    
+%         target = squeeze(handles.datacube(:,:, find(handles.bandname == bandname(i),1)));
+%         
+%         [input_points, base_points] = cpselect(target, anchor,'Wait', true);
+%         assignin('base', 'input_points',input_points);
+%         assignin('base', 'base_points',base_points);
+%         %in terms of affine transform, Minimum Number of Control Point Pairs is 3
+%         tform = cp2tform(input_points, base_points, 'similarity'); 
+%         tform = affine2d(tform.tdata.T); 
+%         register_manual = imwarp(target, tform, 'OutputView', imref2d(size(target)));
+%         handles.transform = tform;
+%         handles.register = register_manual;
+%         updateRegistration(handles);
+%         axes(handles.axes1);cla;
+%         handles.imageleft = imshowpair(anchor, target, 'ColorChannels','red-cyan','Scaling','independent');
+%         title('falsecolor overlaid unregistered images');
+%         axes(handles.axes2);cla;
+%         imshowpair(anchor, register_manual, 'ColorChannels','red-cyan','Scaling','independent');
+%         title('falsecolor overlaid registered images');
+%         similarityold(i,:) = updateSimilarity(handles.anchor, target);
+%         similarity(i,:) = updateSimilarity(handles.anchor, handles.register);
+%         handles.similarity = similarity(i,:);
+%         set(handles.editError, 'String',sprintf('%4s %.0f %2s %.0f %4s %.4f %2s %.4f',...
+%         'SID:', similarityold(i,2),'to',similarity(i,2), 'SMI:', similarityold(i,4),'to',similarity(i,4)));
+%         
+%         T = tform.T;
+%         ss = T(2,1);
+%         sc = T(1,1);
+%         scale(i) = sqrt(ss*ss + sc*sc);
+%         theta(i) = atan2(ss,sc)*180/pi;
+%         tx(i) = T(3,1);
+%         ty(i) = T(3,2);
+%         
+%         end
+%         save('tempT.mat', 'bandname','scale','theta','tx','ty','similarityold','similarity');
+%     end
+%     Tr = makeTransform(bandname,scale,theta,tx,ty);
+%     handles.Transform_data = Tr;
+% end
 
 
 guidata(hObject, handles); 
@@ -1661,13 +1680,14 @@ function MenuLoadT_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 %currentpath = cd();
-[Filename] = uigetfile({'*.mat','Transform data (*.mat)'},'Load Transform File');
-if (Filename==0) % cancel pressed
+[filename, pathname] = uigetfile({'*.mat','Transform data (*.mat)'},'Load Transform File');
+if (filename==0) % cancel pressed
     return;
 end
 %cd (pathname);
-T = load(Filename);
-handles.Transform_data = T;
+handles.transform = importdata(fullfile(pathname,filename));
+H = handles.transform.T;
+set(handles.UitableT, 'Data', H);
 guidata(hObject, handles);
 
 %--------------------------------------------------------------------
@@ -2081,11 +2101,13 @@ function ButtonEdge_Callback(hObject, eventdata, handles)
 % hObject    handle to ButtonEdge (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-thresh = [0 0.5]';
-handles.anchor = edge(handles.anchor,'canny',thresh);%(handles.target, get(handles.sliderBright, 'Value'), get(handles.sliderContrast, 'Value'));
+% thresh = [0 0.5]';
+% handles.anchor = edge(handles.anchor,'canny',thresh);%(handles.target, get(handles.sliderBright, 'Value'), get(handles.sliderContrast, 'Value'));
+handles.anchor = edge(handles.anchor);
 axes(handles.axes1); imshow(handles.anchor);
 
-handles.target = edge(handles.target,'canny',thresh);%(handles.target, get(handles.sliderBright, 'Value'), get(handles.sliderContrast, 'Value'));
+% handles.target = edge(handles.target,'canny',thresh);%(handles.target, get(handles.sliderBright, 'Value'), get(handles.sliderContrast, 'Value'));
+handles.target = edge(handles.target)
 axes(handles.axes2); imshow(handles.target);
 guidata(hObject, handles);
 
@@ -2116,4 +2138,24 @@ axes(handles.axes1); imshow(handles.anchor);
 handles.target = im2double(handles.target).^gramer;
 axes(handles.axes2); imshow(handles.target);
 guidata(hObject, handles);
+
+
+
+% --- Executes on button press in ButtonSaveT.
+function ButtonSaveT_Callback(hObject, eventdata, handles)
+% hObject    handle to ButtonSaveT (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+[FileName, Path] = uiputfile({'*.mat';'*.dat'},'Save transform');
+currentpath = cd();
+if FileName == 0
+    return
+end
+tform = handles.transform;
+if strcmp(FileName(end-3:end),'.mat')
+    cd (Path);
+    save(FileName, 'tform');
+end
+cd (currentpath);
+msgbox('new data cube has been saved.','save file');
 
